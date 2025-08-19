@@ -12,7 +12,7 @@ import requests
 
 app = FastAPI()
 
-MODEL_URL = "https://drive.google.com/uc?id=FILE_ID"  # zameni FILE_ID
+MODEL_URL = "https://drive.google.com/uc?id=1bCoO6XMGwD_Qob9ljxRy94AWaolCkST7"
 MODEL_PATH = "unet.pth"
 DEVICE = torch.device("cpu")
 
