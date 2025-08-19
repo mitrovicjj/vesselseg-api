@@ -8,12 +8,32 @@ import io
 import numpy as np
 import os
 import tempfile
+import requests
 
 app = FastAPI()
 
+MODEL_URL = "https://drive.google.com/uc?id=FILE_ID"  # zameni FILE_ID
+MODEL_PATH = "unet.pth"
+DEVICE = torch.device("cpu")
+
+if not os.path.exists(MODEL_PATH):
+    print("Downloading model from Google Drive...")
+    r = requests.get(MODEL_URL, stream=True)
+    with open(MODEL_PATH, "wb") as f:
+        for chunk in r.iter_content(chunk_size=8192):
+            if chunk:
+                f.write(chunk)
+    print("Download complete.")
+
 model = UNet(n_channels=3, n_classes=1)
-checkpoint = torch.load("unet.pth", map_location="cpu")
-model.load_state_dict(checkpoint['model_state_dict'])
+checkpoint = torch.load(MODEL_PATH, map_location=DEVICE)
+if 'model_state_dict' in checkpoint:
+    model.load_state_dict(checkpoint['model_state_dict'])
+else:
+    model.load_state_dict(checkpoint)
+
+# convert to float16 to save memory for vercel
+model = model.half()
 model.eval()
 
 transform = transforms.Compose([
@@ -32,14 +52,14 @@ async def predict(file: UploadFile = File(...)):
     orig_size = image.size
     image_resized = image.resize((256, 256))
 
-    tensor = transform(image).unsqueeze(0)  # (1, 3, 256, 256)
+    # Koristi float16 tensor
+    tensor = transform(image).unsqueeze(0).half()  # (1,3,256,256)
 
     # inference
     with torch.no_grad():
         output = model(tensor)
         pred_mask = torch.sigmoid(output).squeeze().cpu().numpy()
 
-    # maska (0 ili 255)
     mask_bin = (pred_mask > 0.5).astype(np.uint8) * 255
     mask_img = Image.fromarray(mask_bin).resize(orig_size)
 
