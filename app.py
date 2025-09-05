@@ -32,9 +32,6 @@ if 'model_state_dict' in checkpoint:
 else:
     model.load_state_dict(checkpoint)
 
-# convert to float16 to save memory for vercel
-model = model.half()
-model.eval()
 
 transform = transforms.Compose([
     transforms.Resize((256, 256)),
